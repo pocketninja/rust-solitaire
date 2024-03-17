@@ -144,8 +144,6 @@ fn render_card(mut frame: &mut Frame, card: &Card, position: Vector) {
         .border_set(border::THICK);
 
     let card_text = format!("{}{}", face, suite);
-    // let card_text = card_text.stylize().with_foreground(ratatui::Color::White);
     let card_text = Paragraph::new(card_text).block(card_block);
-    // card_text.render(&mut terminal);
     frame.render_widget(card_text, card_rect);
 }
