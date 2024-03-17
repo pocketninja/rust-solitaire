@@ -1,5 +1,23 @@
 use std::collections::HashMap;
 use crate::cards::{Card, Deck, Face, Suite};
+use crate::ui::UIInput;
+
+#[derive(Debug)]
+#[derive(PartialEq)]
+pub enum GameMode {
+    Game,
+    RenderCards,
+}
+
+impl GameMode {
+    pub fn from_string(mode: &str) -> Result<GameMode, String> {
+        match mode {
+            "game" => Ok(GameMode::Game),
+            "render_cards" => Ok(GameMode::RenderCards),
+            _ => Err(format!("Invalid run mode: {}", mode)),
+        }
+    }
+}
 
 pub enum KlondikeDeckError {
     InvalidSuite,
@@ -12,7 +30,8 @@ pub struct Foundation {
 }
 
 pub struct KlondikeGame {
-    stock: Deck,
+    pub(crate) game_mode: GameMode,
+    pub(crate) stock: Deck,
     waste: Deck,
     foundations: HashMap<Suite, Foundation>,
     piles: [Deck; 7],
@@ -55,29 +74,34 @@ impl Foundation {
 }
 
 impl KlondikeGame {
-    pub fn new() -> KlondikeGame {
+    pub fn new(game_mode: GameMode) -> KlondikeGame {
         let mut stock = Deck::new_standard_deck();
-        stock.shuffle();
 
         let mut waste = Deck::new_empty_deck();
 
         let mut foundations: HashMap<Suite, Foundation> = HashMap::new();
-        foundations.insert(Suite::Clubs, Foundation {
-            cards: Deck::new_empty_deck(),
-            suite: Suite::Clubs,
-        });
-        foundations.insert(Suite::Diamonds, Foundation {
-            cards: Deck::new_empty_deck(),
-            suite: Suite::Diamonds,
-        });
-        foundations.insert(Suite::Hearts, Foundation {
-            cards: Deck::new_empty_deck(),
-            suite: Suite::Hearts,
-        });
-        foundations.insert(Suite::Spades, Foundation {
-            cards: Deck::new_empty_deck(),
-            suite: Suite::Spades,
-        });
+
+        // Create foundations if game mode is Game...
+        if game_mode == GameMode::Game {
+            stock.shuffle();
+
+            foundations.insert(Suite::Clubs, Foundation {
+                cards: Deck::new_empty_deck(),
+                suite: Suite::Clubs,
+            });
+            foundations.insert(Suite::Diamonds, Foundation {
+                cards: Deck::new_empty_deck(),
+                suite: Suite::Diamonds,
+            });
+            foundations.insert(Suite::Hearts, Foundation {
+                cards: Deck::new_empty_deck(),
+                suite: Suite::Hearts,
+            });
+            foundations.insert(Suite::Spades, Foundation {
+                cards: Deck::new_empty_deck(),
+                suite: Suite::Spades,
+            });
+        }
 
         let mut piles: [Deck; 7] = [
             Deck::new_empty_deck(),
@@ -89,17 +113,25 @@ impl KlondikeGame {
             Deck::new_empty_deck(),
         ];
 
-        for i in 0..7 {
-            let cards = stock.take_cards(i + 1);
-            piles[i].add_cards(cards);
-            piles[i].flip_top_card();
+        // File the piles in normal game mode...
+        if game_mode == GameMode::Game {
+            for i in 0..7 {
+                let cards = stock.take_cards(i + 1);
+                piles[i].add_cards(cards);
+                piles[i].flip_top_card();
+            }
         }
 
         KlondikeGame {
+            game_mode,
             stock,
             waste,
             foundations,
             piles,
         }
+    }
+
+    pub fn send_input(&self, input: &UIInput) {
+        //
     }
 }
