@@ -131,7 +131,24 @@ impl KlondikeGame {
         }
     }
 
-    pub fn send_input(&self, input: &UIInput) {
-        //
+    pub fn send_input(&mut self, input: &UIInput) {
+        match self.game_mode {
+            GameMode::Game => {
+                match input.key {
+                    _ => println!("Unknown game mode input: {}", input.key)
+                }
+            }
+            GameMode::RenderCards => {
+                match input.key {
+                    'f' => self.flip_stock(),
+                    _ => println!("Unknown render cards mode input: {}", input.key)
+                }
+            }
+        }
+    }
+    fn flip_stock(&mut self) {
+        for i in 0..self.stock.cards.len() {
+            self.stock.cards[i].face_up = !self.stock.cards[i].face_up;
+        }
     }
 }

@@ -13,9 +13,9 @@ use ratatui::{Frame, prelude::{CrosstermBackend, Stylize, Terminal}, widgets::Pa
 use std::io::{stdout, Stdout};
 use std::result::Result;
 use crossterm::event::KeyEvent;
-use ratatui::layout::Rect;
+use ratatui::layout::{Alignment, Rect};
 use ratatui::symbols::border;
-use ratatui::widgets::{Block, Borders};
+use ratatui::widgets::{Block, Borders, Wrap};
 use ratatui::widgets::block::Title;
 use crate::cards::{Card, Face, Suite};
 use crate::math::Vector;
@@ -109,28 +109,37 @@ fn render_all_cards(frame: &mut Frame, game: &KlondikeGame) {
 }
 
 fn render_card(mut frame: &mut Frame, card: &Card, position: Vector) {
-    let face = match card.face {
-        Face::Ace => "A",
-        Face::Two => "2",
-        Face::Three => "3",
-        Face::Four => "4",
-        Face::Five => "5",
-        Face::Six => "6",
-        Face::Seven => "7",
-        Face::Eight => "8",
-        Face::Nine => "9",
-        Face::Ten => "10",
-        Face::Jack => "J",
-        Face::Queen => "Q",
-        Face::King => "K",
-    };
+    let card_text;
 
-    let suite = match card.suite {
-        Suite::Hearts => "♥",
-        Suite::Diamonds => "♦",
-        Suite::Clubs => "♣",
-        Suite::Spades => "♠",
-    };
+    if card.face_up {
+        let face = match card.face {
+            Face::Ace => "A",
+            Face::Two => "2",
+            Face::Three => "3",
+            Face::Four => "4",
+            Face::Five => "5",
+            Face::Six => "6",
+            Face::Seven => "7",
+            Face::Eight => "8",
+            Face::Nine => "9",
+            Face::Ten => "10",
+            Face::Jack => "J",
+            Face::Queen => "Q",
+            Face::King => "K",
+        };
+
+        let suite = match card.suite {
+            Suite::Hearts => "♥",
+            Suite::Diamonds => "♦",
+            Suite::Clubs => "♣",
+            Suite::Spades => "♠",
+        };
+
+
+        card_text = format!("{}{}", face, suite);
+    } else {
+        card_text = String::from("XXXXXXXXXXX");
+    }
 
     let card_rect = Rect::new(
         position.x as u16,
@@ -143,7 +152,10 @@ fn render_card(mut frame: &mut Frame, card: &Card, position: Vector) {
         .borders(Borders::ALL)
         .border_set(border::THICK);
 
-    let card_text = format!("{}{}", face, suite);
-    let card_text = Paragraph::new(card_text).block(card_block);
+    let card_text = Paragraph::new(card_text)
+        .wrap(Wrap { trim: true })
+        .alignment(Alignment::Center)
+        .block(card_block);
+
     frame.render_widget(card_text, card_rect);
 }
