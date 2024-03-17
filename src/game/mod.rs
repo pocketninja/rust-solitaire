@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use rand::Rng;
 use crate::cards::{Card, Deck, Face, Suite};
 use crate::ui::UIInput;
 
@@ -25,7 +26,7 @@ pub enum KlondikeDeckError {
 }
 
 pub struct Foundation {
-    cards: Deck,
+    deck: Deck,
     suite: Suite,
 }
 
@@ -39,7 +40,7 @@ pub struct KlondikeGame {
 
 impl Foundation {
     pub fn take_cards(&mut self, count: usize) -> Vec<Card> {
-        self.cards.take_cards(count)
+        self.deck.take_cards(count)
     }
 
     pub fn add_card(&mut self, card: Card) -> Result<(), KlondikeDeckError> {
@@ -47,7 +48,7 @@ impl Foundation {
             return Err(KlondikeDeckError::InvalidSuite);
         }
 
-        let top_card = self.cards.cards.last();
+        let top_card = self.deck.cards.last();
 
         if let Some(top_card) = top_card {
             if top_card.face as u8 + 1 != card.face as u8 {
@@ -59,7 +60,7 @@ impl Foundation {
             }
         }
 
-        self.cards.add_cards(vec![card]);
+        self.deck.add_cards(vec![card]);
 
         Ok(())
     }
@@ -76,8 +77,10 @@ impl Foundation {
 impl KlondikeGame {
     pub fn new(game_mode: GameMode) -> KlondikeGame {
         let mut stock = Deck::new_standard_deck();
+        stock.name = String::from("Stock");
 
         let mut waste = Deck::new_empty_deck();
+        waste.name = String::from("Waste");
 
         let mut foundations: HashMap<Suite, Foundation> = HashMap::new();
 
@@ -85,22 +88,21 @@ impl KlondikeGame {
         if game_mode == GameMode::Game {
             stock.shuffle();
 
-            foundations.insert(Suite::Clubs, Foundation {
-                cards: Deck::new_empty_deck(),
-                suite: Suite::Clubs,
-            });
-            foundations.insert(Suite::Diamonds, Foundation {
-                cards: Deck::new_empty_deck(),
-                suite: Suite::Diamonds,
-            });
-            foundations.insert(Suite::Hearts, Foundation {
-                cards: Deck::new_empty_deck(),
-                suite: Suite::Hearts,
-            });
-            foundations.insert(Suite::Spades, Foundation {
-                cards: Deck::new_empty_deck(),
-                suite: Suite::Spades,
-            });
+            let mut deck = Deck::new_empty_deck();
+            deck.name = String::from("Clubs");
+            foundations.insert(Suite::Clubs, Foundation { deck, suite: Suite::Clubs });
+
+            let mut deck = Deck::new_empty_deck();
+            deck.name = String::from("Diamonds");
+            foundations.insert(Suite::Diamonds, Foundation { deck, suite: Suite::Diamonds });
+
+            let mut deck = Deck::new_empty_deck();
+            deck.name = String::from("Hearts");
+            foundations.insert(Suite::Hearts, Foundation { deck, suite: Suite::Hearts });
+
+            let mut deck = Deck::new_empty_deck();
+            deck.name = String::from("Spades");
+            foundations.insert(Suite::Spades, Foundation { deck, suite: Suite::Spades });
         }
 
         let mut piles: [Deck; 7] = [
@@ -118,7 +120,7 @@ impl KlondikeGame {
             for i in 0..7 {
                 let cards = stock.take_cards(i + 1);
                 piles[i].add_cards(cards);
-                piles[i].flip_top_card();
+                piles[i].flip_top_cards(1);
             }
         }
 
@@ -141,6 +143,14 @@ impl KlondikeGame {
             GameMode::RenderCards => {
                 match input.key {
                     'f' => self.flip_stock(),
+                    'g' => self.stock.flip_top_cards(3),
+                    'r' => {
+                        // one random card...
+                        let mut rng = rand::thread_rng();
+                        let i = rng.gen_range(0..self.stock.cards.len());
+                        let mut card = self.stock.cards.get_mut(i).unwrap();
+                        card.face_up = !card.face_up;
+                    }
                     _ => println!("Unknown render cards mode input: {}", input.key)
                 }
             }

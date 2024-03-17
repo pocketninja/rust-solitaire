@@ -1,5 +1,3 @@
-
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Suite {
     Hearts,
@@ -32,12 +30,13 @@ pub struct Card {
 }
 
 pub struct Deck {
+    pub name: String,
     pub cards: Vec<Card>,
 }
 
 impl Deck {
     pub fn new_empty_deck() -> Deck {
-        Deck { cards: Vec::new() }
+        Deck { name: String::from("Deck"), cards: Vec::new() }
     }
 
     pub fn new_standard_deck() -> Deck {
@@ -50,7 +49,7 @@ impl Deck {
                 cards.push(Card { suite, face, face_up: false });
             }
         }
-        Deck { cards }
+        Deck { name: String::from("Standard deck"), cards }
     }
 
     pub fn shuffle(&mut self) {
@@ -73,10 +72,14 @@ impl Deck {
         self.cards.extend(cards);
     }
 
-    pub fn flip_top_card(&mut self) {
-        if let Some(card) = self.cards.last_mut() {
-            card.face_up = true;
+    pub fn flip_top_cards(&mut self, how_many: u16) {
+        for card in self.cards.iter_mut().rev().take(how_many as usize) {
+            card.face_up = !card.face_up;
         }
-    }
 
+
+        // if let Some(card) = self.cards.last_mut() {
+        //     card.face_up = true;
+        // }
+    }
 }

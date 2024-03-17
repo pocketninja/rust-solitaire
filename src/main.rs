@@ -59,7 +59,7 @@ fn main() {
 
         let render = match game.game_mode {
             GameMode::Game => ui.render_game(&game),
-            GameMode::RenderCards => ui.render_cards(&game),
+            GameMode::RenderCards => ui.render_all_cards(&game),
         };
 
         match render {

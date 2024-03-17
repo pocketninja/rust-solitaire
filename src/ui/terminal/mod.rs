@@ -14,13 +14,15 @@ use std::io::{stdout, Stdout};
 use std::result::Result;
 use crossterm::event::KeyEvent;
 use ratatui::layout::{Alignment, Rect};
+use ratatui::style::Style;
 use ratatui::symbols::border;
 use ratatui::widgets::{Block, Borders, Wrap};
 use ratatui::widgets::block::Title;
-use crate::cards::{Card, Face, Suite};
+use crate::cards::{Card, Deck, Face, Suite};
 use crate::math::Vector;
 
-const CARD_SIZE: Vector = Vector { x: 6, y: 4 };
+const CARD_SIZE: Vector = Vector { x: 8, y: 7 };
+const DECK_SIZE: Vector = Vector { x: CARD_SIZE.x + 2, y: CARD_SIZE.y + 2 };
 
 pub struct UI {
     terminal: Terminal<CrosstermBackend<Stdout>>,
@@ -66,7 +68,7 @@ impl RendersKlondikeUI for UI {
         Ok(())
     }
 
-    fn render_cards(&mut self, game: &KlondikeGame) -> Result<(), UIError> {
+    fn render_all_cards(&mut self, game: &KlondikeGame) -> Result<(), UIError> {
         clear_terminal(&mut self.terminal).expect("Could not clear terminal");
         self.terminal.draw(|frame| {
             render_all_cards(frame, game);
@@ -106,10 +108,30 @@ fn render_all_cards(frame: &mut Frame, game: &KlondikeGame) {
             break;
         }
     }
+
+    render_deck(frame, &game.stock, Vector { x, y });
+
+    x += DECK_SIZE.x;
+
+    if x + DECK_SIZE.x > frame_rect.width as i32 {
+        x = 0;
+        y += CARD_SIZE.y;
+    }
+
+    render_deck(frame, &game.stock, Vector { x, y });
 }
 
 fn render_card(mut frame: &mut Frame, card: &Card, position: Vector) {
-    let card_text;
+    let frame_rect = frame.size();
+
+    let x = position.x as u16;
+    let y = position.y as u16;
+
+    if x > frame_rect.width || y > frame_rect.height {
+        return;
+    }
+
+    let mut card_text;
 
     if card.face_up {
         let face = match card.face {
@@ -135,27 +157,96 @@ fn render_card(mut frame: &mut Frame, card: &Card, position: Vector) {
             Suite::Spades => "♠",
         };
 
-
         card_text = format!("{}{}", face, suite);
+        // Now center align it in a full line the size of the card.
+        card_text = format!("{}✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧", card_text);
+        // Dodgy trick to get more space. We want to try and paint over the background, if we are
+        // overlaying other cards/etc.
+        card_text += "\n✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧";
     } else {
-        card_text = String::from("XXXXXXXXXXX");
+        card_text = String::from("✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧");
+    }
+
+    let mut width = CARD_SIZE.x as u16;
+    let mut height = CARD_SIZE.y as u16;
+
+    if x + width > frame_rect.width {
+        width = frame_rect.width - x;
+    }
+
+    if y + height > frame_rect.height {
+        height = frame_rect.height - y;
     }
 
     let card_rect = Rect::new(
-        position.x as u16,
-        position.y as u16,
-        CARD_SIZE.x as u16,
-        CARD_SIZE.y as u16,
+        x,
+        y,
+        width,
+        height,
     );
 
+    let block_style: Style = match card.face_up {
+        false => Style::new().blue().on_white().bold(),
+        true => match card.suite {
+            Suite::Hearts => Style::new().red().on_white().bold(),
+            Suite::Diamonds => Style::new().red().on_white().bold(),
+            Suite::Clubs => Style::new().black().on_white().bold(),
+            Suite::Spades => Style::new().black().on_white().bold(),
+        }
+    };
+
     let card_block = Block::default()
+        .style(block_style)
         .borders(Borders::ALL)
         .border_set(border::THICK);
 
     let card_text = Paragraph::new(card_text)
         .wrap(Wrap { trim: true })
-        .alignment(Alignment::Center)
+        // .alignment(Alignment::Center)
         .block(card_block);
 
     frame.render_widget(card_text, card_rect);
+}
+
+fn render_deck(mut frame: &mut Frame, deck: &Deck, position: Vector) {
+    let frame_rect = frame.size();
+
+    let mut x = position.x;
+    let mut y = position.y;
+
+    let deck_block = Block::default()
+        .title(deck.name.as_str())
+        .borders(Borders::ALL)
+        .border_set(border::THICK);
+
+    let deck_rect = Rect::new(
+        x as u16,
+        y as u16,
+        DECK_SIZE.x as u16,
+        DECK_SIZE.y as u16,
+    );
+
+    frame.render_widget(deck_block, deck_rect);
+
+    let mut card_x = position.x + (DECK_SIZE.x - CARD_SIZE.x) / 2;
+    let mut card_y = position.y + (DECK_SIZE.y - CARD_SIZE.y) / 2;
+
+    // for card in deck.cards.iter() {
+    for i in 0..deck.cards.len() {
+        let card = &deck.cards[i];
+
+        render_card(frame, card, Vector { x: card_x, y: card_y });
+
+        // If this card is face up, give enough space for the "card title"
+        if card.face_up {
+            card_y += 2;
+        } else {
+            // If it's not face up, and the next _is_, give a bump so we can see there are cards
+            // "under" the next one.
+            let next_index = i + 1;
+            if next_index < deck.cards.len() && deck.cards[next_index].face_up {
+                card_y += 1;
+            }
+        }
+    }
 }
